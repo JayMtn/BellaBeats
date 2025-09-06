@@ -1,0 +1,5 @@
+Notes of mine while learning GitHub
+-create my first repo
+-Updated the README
+-Learned about commits
+add notes.txt with learning notes
