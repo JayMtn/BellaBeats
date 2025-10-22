@@ -1,0 +1,12 @@
+.Rhistory
+.RData
+.RDataTmp*
+.Rproj.user/
+.Ruserdata
+.Rplots.pdf
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+*.tmp
+BellaBeats/ cat .gitignore

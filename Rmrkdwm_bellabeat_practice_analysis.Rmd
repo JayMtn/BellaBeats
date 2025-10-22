@@ -1,0 +1,361 @@
+---
+title: "BellaBeat_analysis"
+author: "Jamin"
+date: "2025-08-19"
+output:
+  html_document:
+    df_print: paged
+---
+
+# About the Company- 
+### Bellabeat, a hightech company that manufactures health-focused smart products. since founded in 2013, Bellabeat has grown rapidly and quickly positioned itself as a tech-driven wellness company for women. By 2016, Bellabeat had opened offices around the world and launched multiple products. Srsen, president, knows that an analysis of Bellabeats available consumer data would reveal more opportunities for growth and needs our help to find patterns to make recommendations and inform the marketing team.
+
+
+# ASK
+### Questions we will be tasked with during our anlaysis. 
+- 1) What are some trends in smart device usage?
+- 2) How could these trends apply to Bellabeat customers?
+- 3) How could these trends help influence Bellabeat marketing strategy?
+
+# Business Task
+#### Identify potential opportunities for business growth based on customer interaction with products. Giving recommendations of where to focus our efforts in reaching new customers and challenging current customers. 
+
+## Loading packages needed for Analysis
+
+```{r Install}
+#install-'tidyverse package if not done so.
+library(tidyverse) # this loads ggplots, dplyr, lubridate, ect.
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(tidyr)
+library(readr)
+library(hms)
+library(scales)
+```
+
+#### Downloaded all google sheets and converted them into CSV files. Now ready to load into R using read_csv. Make sure "/" is used to recognize file path in Rstudio. We also provided dataframe names using the "<-"
+
+```{r loading csv files}
+activity <- read_csv("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/dailyActivity_merged.csv", col_types=cols(.default="c"))
+
+calories <- read_csv("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/hourlyCalories_merged.csv", col_types=cols(.default="c"))
+
+
+sleep <- read_csv("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/minuteSleep_merged.csv",col_types=cols(.default="c"))
+
+
+weight <- read_csv("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/weightLogInfo_merged.csv", col_types=cols(.default="c"))
+
+
+intensities <- read_csv ("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/hourlyIntensities_merged.csv", col_types=cols(.default="c"))
+
+steps <- read_csv ("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/hourlySteps_merged.csv", col_types=cols(.default="c"))
+
+heartRate <- read_csv ("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/heartrate_seconds_merged.csv", col_types=cols(.default="c"))
+```
+
+
+#### checking the column and table layout to verify our data and format.
+```{r-check activity table}
+head(activity)
+colnames(activity)
+```
+
+```{r check sleep table}
+head(sleep)
+colnames(sleep)
+```
+
+#### The ActivityHour columns in multiple sheets share date & Time together in the same column. we will need to separate using the lubridate() within Tidyverse package.
+
+#### First, will run a class function to recognize that each of our data frames are recognized and not considered vector's, which would produce errors in our lubridate ().
+
+```{r class function}
+class(activity)
+class(sleep)
+class(intensities)
+class(calories)
+class(weight)
+```
+
+#### now that class() verified our data frames, we can use lubridate to separate our columns we need the library(hms)function to properly separate our columns as characters and recognized as DateTime
+
+#### pay close attention to our columns as some sheets have different column headers listed.
+
+#### following code will separate columns and format data correctly. a pipe makes this easy.converts string to datetime (04/12/2016 09:14:00), extracts date, Extracts just the time
+#### run a Head code to verify format of calories->ActivityHour column to give us proper MDY reading.
+
+```{r see first 5 data points of calories}
+head(calories$ActivityHour,5)
+```
+
+```{r reformat our calories table by fixing date column}
+calories <- calories %>%
+  mutate(ActivityHour = parse_date_time(ActivityHour, orders="mdy IMS p"),
+          date=date(ActivityHour),
+          time=as_hms(ActivityHour),
+          ActivityDate=as.Date(ActivityHour))
+```
+
+          
+#### Now, the date frame should have 5 separate columns.
+
+```{r review before continuing}
+
+print(calories)
+```
+#### Repeat for the following sheets that need conversion for both date/time and making values numeric to allow our plot to be readable.
+
+```{r activity dataframe re-write to fix umeric values and date column}
+activity<- activity %>%
+  mutate(SedentaryMinutes=as.numeric(SedentaryMinutes),
+         TotalSteps=as.numeric(TotalSteps),
+         Calories=as.numeric(Calories), 
+         LightlyActiveMinutes= as.numeric(LightlyActiveMinutes),
+         FairlyActiveMinutes=as.numeric(FairlyActiveMinutes),
+         VeryActiveMinutes=as.numeric(VeryActiveMinutes))
+                                      
+```
+
+
+```{r sleep dataframe}
+sleep <- sleep %>%
+
+  mutate(ActivityTime=mdy_hms(date), date=date(ActivityTime), time=as_hms(ActivityTime))
+View(sleep)
+```
+
+```{r intesnsities data frame}
+intensities<-intensities%>%
+  mutate(ActivityHour = mdy_hms(ActivityHour),
+         date=date(ActivityHour),
+         time=as_hms(ActivityHour))
+```
+
+
+```{r weight dataframe}
+weight<-weight %>%
+  mutate(ActivityTime=mdy_hms(Date)
+         ) %>% #create datetime column to have R recognize ActivityTime before using it.
+  mutate(date=date(ActivityTime), time=as_hms(ActivityTime))
+```
+
+
+```{r steps dataframe}
+steps<-steps %>%
+  mutate(ActivityHour=mdy_hms(ActivityHour), date=date(ActivityHour), time=as_hms(ActivityHour))
+heartRate<-heartRate %>%
+  mutate(Time=mdy_hms(Time), date=date(Time), time=as_hms(Time))
+```
+
+
+#### How many unique participants are there in each dataframe
+
+```{r how may users per table}
+
+n_distinct(activity$Id)
+n_distinct(steps$Id)
+n_distinct(sleep$Id)
+n_distinct(calories$Id)
+n_distinct(weight$Id)
+n_distinct(intensities$Id)
+n_distinct(heartRate$Id)
+```
+
+#### Results indicate that 11ppl participated in weights data frame and 14ppl in the heartRate, which could result in survey bias. How many observations are in each data frame.
+
+```{r how many inputs all togheter per table}
+nrow(activity)
+nrow(sleep)
+nrow(weight)
+nrow(steps)
+nrow(calories)
+nrow(intensities)
+nrow(heartRate)
+```
+
+
+#### Again, weight data frame has a significant difference in entries. Therefore, we will conclude this data to be irrelevantl and Bias.  
+
+#### The Activity dataframe also has low amount of entries compared to the others but lets keep it in mind for our analysis as it does have 35 participants.
+
+#### lets run a summary table of our data frames to get a clearer picture of our data.
+```{r summary table of all data sets}
+activity%>%
+  select(TotalSteps,TotalDistance,Calories,SedentaryMinutes)%>%
+  summary()
+activity%>%
+  select(VeryActiveMinutes,FairlyActiveMinutes,LightlyActiveMinutes) %>%
+  summary()
+intensities%>%
+  select(ActivityHour, TotalIntensity, AverageIntensity)%>%
+  summary()
+calories%>%
+  select(ActivityHour,Calories)%>%
+  summary()
+steps%>%
+  select(ActivityHour, StepTotal)%>%
+  summary()
+heartRate%>%
+  select(Time,Value)%>%
+  summary()
+activity %>%
+  summarize(avg_calories = mean(Calories, na.rm=TRUE),
+            avg_steps = mean(TotalSteps, na.rm=TRUE))
+```
+
+## Summary and Key Points
+- LightAcivity was highly popular with a average of 170 minutes
+* Most fit bit users who were active burned calories averaging 2189 with 6547 steps. 
+-  Average workouts were less than 20minutes and most preferred early morning workouts between 5-6am.
+- Although participants were less than 15ppl in the heartRate dataframe, we can conclude that there was an average increase in heart rate when active 79.76. This data set had also the highest amount of entries but lowest amount of participants.
+
+
+
+#### Now we will look at total activity data related to sedentary and compare it to Steps. we will then run an visual for calories and LightlyActive then combine data by merging.
+
+
+
+```{r plot2}
+
+activity_new2<- activity%>%
+  group_by(Calories)%>%
+  drop_na()%>%
+  summarize(mean_total_Activity=mean(LightlyActiveMinutes))
+
+ggplot(data=activity, aes(x= Calories, y= LightlyActiveMinutes))+
+  geom_point(color='darkorange')+ geom_smooth()+
+  labs(title='LightlyActiveMinutes Vs. Calories')
+```
+
+#### this gives us a good visual with the blue smooth line that identifes the trend in comparing calories and minutes active. Notice there are some anomolies which will happen in all datasets. 
+#### Next, we will use joins to get a more accurate picture of this trend line. This graph demonstrates a clearer representation between calories and Light activity by JOINING two datasets that we demonstrate below.
+
+```{r Left Join}
+# We will reformat both the activity and calorie dataframe for consistency. 
+activity<-activity%>%
+  mutate(ActivityDate=as.Date(ActivityDate, format= "%m/%d/%Y"))%>%
+  mutate(Id=as.character(Id))
+
+# Need to convert the 'ActivityHour' column (date and time) into a proper Date object, and assign
+# it to the new column name 'ActivityDate'. First coerce column to character, then POSIXct (date/time),
+# and finally truncate the standard Date class. 
+calories<-calories %>%
+ mutate(ActivityDate=as.Date(as.POSIXct(as.character(ActivityHour), format = "%m/%d/%Y %I:%M:%S %p"))) %>%
+  mutate(Id=as.character(Id))
+
+activity_calories<- activity %>%
+    mutate(ActivityDate= as.Date(ActivityDate, format= "%m/%d/%Y")) # fixes datetime mismatch of column names
+  activity_calories <- activity %>%
+    left_join(calories, by= c("Id", "ActivityDate")) #performs a clean join
+```
+ 
+#### Now we will work on a new dataframe to combine types of data and then plot them to show calories verse Activities
+
+```{r plot4}
+ggplot(activity, aes(x=Calories, y=LightlyActiveMinutes)) +
+  geom_point(color='darkorange', alpha=.6)+
+  geom_smooth(method="lm", color="steelblue", se = FALSE)+
+  labs( title= "Relationship Between LightlyActiveMinutes and Calories Burned",
+        x="Calories", Y="Lightly Active Minutes")+
+  theme_minimal()
+```
+
+
+#### Now we will separate by each activity type and color code them differently for a nice clean look.
+
+```{r plot5}
+
+ggplot(activity, aes(x= VeryActiveMinutes, y=Calories))+
+  geom_point(color="firebrick")+
+  geom_smooth(method= "lm", se= FALSE)+
+  labs(title= "Very Active Minutes vs Calories Burned")
+```
+
+
+```{r plot6}
+ggplot(activity, aes(x=FairlyActiveMinutes, y=Calories))+
+  geom_point(color="purple", alpha=500)+
+  geom_smooth(method="lm", se=FALSE)+
+  labs(title="Fairly Active Minutes vs. Calories Burned")
+```
+```{r plot7}
+ggplot(activity_calories, aes(x=LightlyActiveMinutes, y=Calories.x))+
+         geom_point(color="darkgreen")+
+         geom_smooth(method= "lm", se= FALSE)+
+         labs(title="Lightly Active Minutes vs. Calories Burned")
+
+
+#Finally, lets compare each activity type side-by-side. we will use the Pivot Long function to support this data frame.
+```
+
+```{r plot8}
+activity_calories<- activity_calories %>%
+  mutate(LightlyActiveMinutes= as.numeric(LightlyActiveMinutes),
+         FairlyActiveMinutes = as.numeric(FairlyActiveMinutes),
+         VeryActiveMinutes = as.numeric(VeryActiveMinutes))
+      
+
+activity_long<- activity_calories%>%
+  pivot_longer(cols=c(LightlyActiveMinutes, FairlyActiveMinutes,VeryActiveMinutes),
+               names_to= "ActivityType",
+               values_to="Minutes")
+ggplot(activity_long, aes(x= Minutes, y=Calories.x))+
+  geom_point(alpha=0.5)+
+  geom_smooth(method="lm", se= FALSE, color="limegreen")+
+  facet_wrap(~ActivityType)+
+  labs(title="Calories Burned vs. Different Types of Activity")
+```
+
+#### Lets track to see where most activity Levels are according to the days of the week
+#### First we will remove all non-date characters and convert to Date object. Then ensure our data on the Y-variable is numeric in order to read properly. Wday(label=TRUE) ensures correct ordering for the x-axis. Last, our diagnostic check is good verification that our weekdays found reads "7"
+
+```{r plot9}
+activity <- read_csv("C:/Users/jmcla/OneDrive/Documents/DATA Analytics/Portfolio_CaseStudy/Case_study_samples/Fit Bit case study2/Fitabase Data 3.12.16-4.11.16/dailyActivity_merged.csv", col_types=cols(.default="c"))
+
+cleaned_dates <- gsub(pattern = "[^0-9/]", replacement = "", x = activity$ActivityDate)
+activity$ActivityDate <- mdy(cleaned_dates)
+
+print(paste("TotalSteps class before conversion:", class(activity$TotalSteps)))
+activity$TotalSteps <- as.numeric(activity$TotalSteps)
+print(paste("TotalSteps class after conversion:", class(activity$TotalSteps)))
+
+activity$weekday <- wday(activity$ActivityDate, label = TRUE)
+
+print(paste("Number of unique weekdays found:", length(unique(activity$weekday))))
+
+ggplot(activity, aes(x=weekday, y=TotalSteps)) +
+  geom_boxplot(fill="yellow") +
+  labs(title="Steps by Day of the Week")
+```
+
+## Top 5 users from our analysis and show total steps and calories.
+```{r Top 5 user results}
+activity %>% mutate(Calories=as.numeric(Calories))%>%
+  group_by(Id) %>%
+  summarize(TotalSteps = sum(TotalSteps, na.rm=TRUE),
+            TotalCalories = sum(Calories, na.rm=TRUE)) %>%
+  arrange(desc(TotalSteps)) %>%
+  head(5)
+```
+
+
+# Conclusions
+* Although HeartRate and Sleep had the most entries; the Steps, calories and activity sections had a higher amount of participants indicating a stronger usage in these categories.
+* Light Activity produced had the highest mean compared to FairlyActive and VeryActive. This could be because of their individual profession where they spend most of their time.
+* Data also shows a high amount of SedentaryMinutes with avg. 995 which means most participants were active only 31% of their day. 
+* 24hrs a day x 60minutes in an hour = 1440 minutes. 995min/1440Min = .69. 1-.69=.31
+* utilize the sedetary minutes block to release "targeted campaings/promotions" while you have the users attention.
+* Bellabeat has incurred a fast growth rate and has appealed to several women across the globe.
+
+### The following are insights on what we would recommend moving forward into next year, promoting Growth and Challenges for current customers.
+* Bella users are more active on Saturday and Wednesday with Saturday showing the highest amount of activity. We also see most participants were involved in LightActivity, this could be due to time constraints or personal schedules. Would be beneficial to raise awareness on app of lightactvity related competitions during the week and have a heavier activity challenge on Saturday being the busiest day. 
+* Each graph on calories and activity shows us the more active users are, the more calories they burn. This has been known to support good health.
+* Launching a campaign for users to join together to win "belladollars", prizes or even trips; to help raise awareness and increase enrolled users under the bellabeat platform. 
+* Earlier we found that, on average, users are only active for under 35% of their time in a 24hour period. Note we would expect this to increase a little as 8hrs (30%) of their time is reserved for sleeping- therefore there is room for increased activity for all bella users. 
+* There is several opportunities for both bella and its users to improve as the market and usage is strong. The fit bit is popular and users are wearing them even if they are not active, maybe offer links/appointment calls with life coaches, workout plans, health/eating plans and competitions to help raise awareness and increase activity which in turn produces healthier clients. 
+* Start thinking of quarterly competitions and maybe have an annual retreat for your top performers per region as a reward for their usage which can be tracked by a point based system.
+* Bella has a strong influence amongst women and opportunity to grow even more within the active health industry. 
+
+
